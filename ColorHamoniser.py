@@ -181,12 +181,9 @@ def calc_shift_rgb(v):
     else:
         print('Number of colors: ', cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')+1)
 
-        for i in range(grbgrad.shape[0]):
-            for j in range(grbgrad.shape[1]):
-                index = search_closest(grbgrad[i, j, 1], grbgrad[i, j, 2],
-                                       1 + cv.getTrackbarPos('Number of Colors', 'Color Harmoniser'))
-                grbgradshift[i, j, 1] = hue_picked_rgb[0, index[0], 0]
-                grbgradshift[i, j, 2] = hue_picked_rgb[0, index[0], 2]
+        indexes = search_closest(grbgrad[:, :, 1], grbgrad[:, :, 2])
+        grbgradshift[:, :, 1] = np.take(hue_picked_rgb[0, :, 0], indexes[:, :, 0])
+        grbgradshift[:, :, 2] = np.take(hue_picked_rgb[0, :, 2], indexes[:, :, 0])
 
         blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
         print('blrad: ', blrad)
@@ -232,12 +229,14 @@ def calc_shift_lab(v):
     else:
         print('Number of colors: ', cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')+1)
 
-        for i in range(labgrad.shape[0]):
-            for j in range(labgrad.shape[1]):
-                index = search_closest(labgrad[i, j, 1], labgrad[i, j, 2],
-                                       1 + cv.getTrackbarPos('Number of Colors', 'Color Harmoniser'))
-                labgradshift[i, j, 1] = hue_picked[0, index[0], 1]
-                labgradshift[i, j, 2] = hue_picked[0, index[0], 2]
+        indexes = search_closest(labgrad[:, :, 1], labgrad[:, :, 2])
+        labgradshift[:, :, 1] = np.take(hue_picked[0, :, 1], indexes[:, :, 0])
+        labgradshift[:, :, 2] = np.take(hue_picked[0, :, 2], indexes[:, :, 0])
+        #for i in range(labgrad.shape[0]):
+        #    for j in range(labgrad.shape[1]):
+        #        index = search_closest(labgrad[i, j, 1], labgrad[i, j, 2])
+        #        labgradshift[i, j, 1] = hue_picked[0, index[0], 1]
+        #        labgradshift[i, j, 2] = hue_picked[0, index[0], 2]
 
         blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
         print('blrad: ', blrad)
@@ -267,22 +266,19 @@ def calc_shift_lab(v):
     show_image()
     return None
 
-def search_closest(a, b, number):
-    hue_picked_rgb = cv.cvtColor(hue_picked, cv.COLOR_LAB2RGB)
-    af = float(a)
-    bf = float(b)
-    da = np.zeros(number)
-    db = np.zeros(number)
-    dc2 = np.zeros(number)
-    for i in range(number):    #range(cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') + 1):
-        if cv.getTrackbarPos('Type','Color Harmoniser') == 2:
-            da[i] = hue_picked_rgb[0, i, 0] - af
-            db[i] = hue_picked_rgb[0, i, 2] - bf
-        elif cv.getTrackbarPos('Type','Color Harmoniser') == 0:
-            da[i] = hue_picked[0, i, 1] - af
-            db[i] = hue_picked[0, i, 2] - bf
-        dc2[i] = da[i]**2 + db[i]**2        # distance squared
-        #print(dc2)
+def search_closest(a, b):
+    af = np.atleast_3d(a.astype(float))
+    bf = np.atleast_3d(b.astype(float))
+    htype = cv.getTrackbarPos('Type','Color Harmoniser')
+
+    if htype == 0:
+        da = hue_picked[0, :, 1].reshape(1, 1, -1) - af
+        db = hue_picked[0, :, 2].reshape(1, 1, -1) - bf
+    elif htype == 2:
+        hue_picked_rgb = cv.cvtColor(hue_picked, cv.COLOR_LAB2RGB)
+        da = hue_picked_rgb[0, :, 1].reshape(1, 1, -1) - af
+        db = hue_picked_rgb[0, :, 2].reshape(1, 1, -1) - bf
+    dc2 = da ** 2 + db ** 2
     index = np.argsort(dc2)
     return index
 
