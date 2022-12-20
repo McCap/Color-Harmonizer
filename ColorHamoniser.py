@@ -16,7 +16,7 @@ maxima = 4
 percent = .4
 
 def labtolch(img_lab):
-    img_lch = np.zeros(img_lab[:, :, :].shape, dtype=np.uint8)
+    img_lch = np.zeros_like(img_lab, dtype=np.uint8)
     channel_a = img_lab[:, :, 1].astype(np.float16)
     channel_b = img_lab[:, :, 2].astype(np.float16)
     img_lch[:,:,0] = img_lab[:,:,0]
@@ -33,12 +33,11 @@ def labtolch(img_lab):
     return img_lch
 
 def lchtolab(img_lch):
-    img_lab = np.zeros(img_lch[:, :,:].shape, dtype=np.uint8)
+    img_lab = np.zeros_like(img_lch, dtype=np.uint8)
     channel_l = img_lch[:, :, 0].astype(np.float16)
     channel_c = img_lch[:, :, 1].astype(np.float16)
     channel_h = img_lch[:, :, 2].astype(np.float16)
 
-    channel_l
     channel_a = channel_c * np.cos( channel_h / 255 * 2 * np.pi ) + 127
     channel_b = channel_c * np.sin( channel_h / 255 * 2 * np.pi ) + 127
 
