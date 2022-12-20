@@ -23,10 +23,7 @@ def labtolch(img_lab):
     channel_c = np.sqrt(np.square(channel_a-128) + np.square(channel_b-128) )           # 0 to 128
     img_lch[:, :, 1] = channel_c.astype(np.uint8)                                       # signed 8 bit int
     channel_h = (np.arctan2((channel_b-128), (channel_a-128)) ) / (2*np.pi) * 255       # 0 to 255
-    for i in range(channel_h.shape[0]):
-        for j in range(channel_h.shape[1]):
-            if channel_h[i, j] < 0:
-                channel_h[i, j] = 255 + channel_h[i, j]
+    channel_h[channel_h < 0] += 255
 
     img_lch[:, :, 2] = channel_h.astype(np.uint8)
     #img_lch[:,:,2] = (np.arctan2((img_lab[:,:,2]-127), (img_lab[:,:,1]-127)) + np.pi) / (2*np.pi) * 255     # 0 to 2Pi
@@ -118,17 +115,15 @@ def calc_shift_lch_h(v):
     img_lch = labtolch(img_lab)
     img_lch_harm = labtolch(img_lab)
     hue_picked_lch = labtolch(hue_picked)
-    hue_picked_lch_trans = np.zeros(hue_picked_lch.shape)
-    for i in range(hue_picked_lch.shape[1]):
-        hue_picked_lch_trans[0, i, 2] = hue_picked_lch[0, i, 2] - hue_picked_lch[0, 0, 2]
+    hue_picked_lch_trans = np.zeros_like(hue_picked_lch)
+    hue_picked_lch_trans[0, :, 2] = hue_picked_lch[0, :, 2] - hue_picked_lch[0, 0, 2]
 
     print('hue_picked: ', hue_picked_lch)
     print('hue_picked trans: ', hue_picked_lch_trans)
 
     mapping = np.zeros((1, 256, 1))
     print('mapping: ', mapping.shape)
-    for i in range(128, 255):
-        mapping[0, i, 0] = 255
+    mapping[0, 128:255, 0] = 255
 
     blrad = cv.getTrackbarPos('Blur', 'Color Harmoniser') * 10 + 1
     print('blrad: ', blrad)
@@ -138,18 +133,13 @@ def calc_shift_lch_h(v):
 
     if cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') == 0 :
         print('One color LCH-hue')
-        for i in range(img_lch.shape[0]):
-            for j in range(img_lch.shape[1]):
-                hue = img_lch[i, j, 2].astype(np.float16)  -  hue_picked_lch[0, 0, 2]      # transorm  hue
-                if hue < 0:
-                    hue = 255 + hue
+        hue = (img_lch[:, :, 2].astype('float16') - hue_picked_lch[0, 0, 2]).astype('uint8')
+        # hue[hue < 0] += 255
 
-                hue_harm = mapping[0, hue.astype(np.uint8), 0] * v + (1-v) * hue
-                #print(hue_harm)
-                if (hue_harm + hue_picked_lch[0, 0, 2]) > 255 :
-                    img_lch_harm[i, j, 2] = hue_harm + hue_picked_lch[0, 0, 2] - 255
-                else:
-                    img_lch_harm[i, j, 2] = hue_harm + hue_picked_lch[0, 0, 2]
+        hue_harm = mapping[0, hue, 0] * v + (1 - v) * hue
+        hue_mask = (hue_harm + hue_picked_lch[0, 0, 2]) > 255
+        img_lch_harm[:, :, 2] = np.where(hue_mask, hue_harm + hue_picked_lch[0, 0, 2] - 255,
+                                                   hue_harm + hue_picked_lch[0, 0, 2])
 
                 #img_lch_harm[i,j,2] = hue_picked_lch[0, 0, 2] * v + (1 - v) * img_lch[i,j,2]
         print('Loop done')
@@ -168,17 +158,16 @@ def calc_shift_rgb(v):
 
     grbgrad = createlabgrad()
     grbgradshift = createlabgrad()
-    if cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') == 0 :
+    ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')
+    if ncolors == 0 :
         print('One color RGB')
-        for i in range(img_rgb.shape[0]):
-            for j in range(img_rgb.shape[1]):
-                # G fixed, changing only R and B
-                img_rgb_harm[i,j,0] = hue_picked[0, 0, 0] * v + (1 - v) * img_rgb[i,j,0]
-                img_rgb_harm[i,j,2] = hue_picked[0, 0, 2] * v + (1 - v) * img_rgb[i,j,2]
+        img_rgb_harm[:, :, 0] = hue_picked[0, 0, 0] * v + (1 - v) * img_rgb[:, :, 0]
+        img_rgb_harm[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * img_rgb[:, :, 2]
         print('Loop done')
 
     else:
-        print('Number of colors: ', cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')+1)
+        ncolors += 1
+        print('Number of colors: ', ncolors)
 
         indexes = search_closest(grbgrad[:, :, 1], grbgrad[:, :, 2])
         grbgradshift[:, :, 1] = np.take(hue_picked_rgb[0, :, 0], indexes[:, :, 0])
@@ -192,17 +181,8 @@ def calc_shift_rgb(v):
         grbgradshift[:, :, 1] = blur_a
         grbgradshift[:, :, 2] = blur_b
 
-    for i in range(img_rgb.shape[0]):
-        for j in range(img_rgb.shape[1]):
-            # index = search_closest(img_lab[i,j, 1], img_lab[i, j, 2], 1 + cv.getTrackbarPos('Number of Colors', 'Color Harmoniser'))
-            buffer_a = grbgradshift[img_rgb[i, j, 2], img_rgb[i, j, 0], 1] * v + (1 - v) * img_rgb[i, j, 0]
-            buffer_b = grbgradshift[img_rgb[i, j, 2], img_lab[i, j, 1], 2] * v + (1 - v) * img_lab[i, j, 2]
-            # print(buffer_a.astype(np.uint8))
-            img_rgb_harm[i, j, 0] = buffer_a.astype(np.uint8)
-            img_rgb_harm[i, j, 2] = buffer_b.astype(np.uint8)
-            # img_lab_harm[i,j,1] = scale * (hue_picked[index[0], 1] - img_lab[i,j,1]) * v + img_lab[i,j,1]
-            # img_lab_harm[i,j,2] = scale * (hue_picked[index[0], 2] - img_lab[i,j,2]) * v + img_lab[i,j,2]
-
+    img_rgb_harm[:, :, 0] = (grbgradshift[img_rgb[:, :, 2], img_rgb[:, :, 0], 1] * v + (1 - v) * img_rgb[:, :, 0]).astype('uint8')
+    img_rgb_harm[:, :, 2] = (grbgradshift[img_rgb[:, :, 2], img_lab[:, :, 1], 2] * v + (1 - v) * img_lab[:, :, 2]).astype('uint8')
     img_lab_harm = cv.cvtColor(img_rgb_harm, cv.COLOR_RGB2LAB)
     print('Loop done')
     show_image()
@@ -213,29 +193,20 @@ def calc_shift_lab(v):
 
     labgrad = createlabgrad()
     labgradshift = createlabgrad()
+    ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')
 
-    if cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') == 0 :
+    if ncolors == 0 :
         print('One color')
-        for i in range(img_lab.shape[0]):
-            for j in range(img_lab.shape[1]):
-                if img_lab[i, j, 0] <127:
-                    scale = img_lab[i, j, 0] / 127
-                else:
-                    scale = 1 - (img_lab[i, j, 0]-127) / 127
-                img_lab_harm[i,j,1] =  hue_picked[0, 0, 1] * v + (1 - v) * img_lab[i,j,1]
-                img_lab_harm[i,j,2] =  hue_picked[0, 0, 2] * v + (1 - v) * img_lab[i,j,2]
+        img_lab_harm[:, :, 1] = hue_picked[0, 0, 1] * v + (1 - v) * img_lab[:, :, 1]
+        img_lab_harm[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * img_lab[:, :, 2]
         print('Loop done')
     else:
-        print('Number of colors: ', cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')+1)
+        ncolors += 1
+        print('Number of colors: ', ncolors)
 
         indexes = search_closest(labgrad[:, :, 1], labgrad[:, :, 2])
         labgradshift[:, :, 1] = np.take(hue_picked[0, :, 1], indexes[:, :, 0])
         labgradshift[:, :, 2] = np.take(hue_picked[0, :, 2], indexes[:, :, 0])
-        #for i in range(labgrad.shape[0]):
-        #    for j in range(labgrad.shape[1]):
-        #        index = search_closest(labgrad[i, j, 1], labgrad[i, j, 2])
-        #        labgradshift[i, j, 1] = hue_picked[0, index[0], 1]
-        #        labgradshift[i, j, 2] = hue_picked[0, index[0], 2]
 
         blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
         print('blrad: ', blrad)
@@ -245,23 +216,10 @@ def calc_shift_lab(v):
         labgradshift[:, :, 1] = blur_a
         labgradshift[:, :, 2] = blur_b
 
+    img_lab_harm[:,:,1] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 1] * v + (1-v) * img_lab[:,:,1]).astype('uint8')
+    img_lab_harm[:,:,2] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 2] * v + (1-v) * img_lab[:,:,2]).astype('uint8')
 
-        for i in range(img_lab.shape[0]):
-            for j in range(img_lab.shape[1]):
-                #index = search_closest(img_lab[i,j, 1], img_lab[i, j, 2], 1 + cv.getTrackbarPos('Number of Colors', 'Color Harmoniser'))
-                if img_lab[i, j, 0] <127:
-                    scale = img_lab[i, j, 0] / 127
-                else:
-                    scale = 1 - (img_lab[i, j, 0]-127) / 127
-                buffer_a = labgradshift[img_lab[i,j,2], img_lab[i,j,1], 1] * v + (1-v) * img_lab[i,j,1]
-                buffer_b = labgradshift[img_lab[i,j,2], img_lab[i,j,1], 2] * v + (1-v) * img_lab[i,j,2]
-                #print(buffer_a.astype(np.uint8))
-                img_lab_harm[i,j,1] = buffer_a.astype(np.uint8)
-                img_lab_harm[i,j,2] = buffer_b.astype(np.uint8)
-                #img_lab_harm[i,j,1] = scale * (hue_picked[index[0], 1] - img_lab[i,j,1]) * v + img_lab[i,j,1]
-                #img_lab_harm[i,j,2] = scale * (hue_picked[index[0], 2] - img_lab[i,j,2]) * v + img_lab[i,j,2]
-
-        print('Loop done')
+    print('Loop done')
     show_image()
     return None
 
