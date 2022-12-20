@@ -284,5 +284,8 @@ print(img_lab.dtype)
 print(img_lch.dtype)
 show_image()
 
-cv.waitKey()
-cv.destroyAllWindows()
+while True:
+    key = cv.waitKey()
+    if key == 27 or key == 113:
+        cv.destroyAllWindows()
+        break
