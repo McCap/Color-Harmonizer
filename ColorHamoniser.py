@@ -296,11 +296,9 @@ def show_image():
 
 def createlabgrad():
     lab_image_fromL = np.zeros((256, 256, 3), dtype=np.uint8)
-    for i in range(0, 255):
-        for j in range(0, 255):
-            lab_image_fromL[i, j, 0] = 127  # L-chanel
-            lab_image_fromL[i, j, 1] = j  # a-chanel
-            lab_image_fromL[i, j, 2] = i  # b-chanel
+    lab_image_fromL[:, :, 0] = 127
+    lab_image_fromL[:, :, 1] = np.arange(256)
+    lab_image_fromL[:, :, 2] = lab_image_fromL[:, :, 1].T
     return lab_image_fromL
 
 
