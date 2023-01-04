@@ -150,8 +150,8 @@ def calc_shift_rgb(v):
     ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')
     if ncolors == 0 :
         print('One color RGB')
-        img_rgb_harm[:, :, 0] = hue_picked[0, 0, 0] * v + (1 - v) * img_rgb[:, :, 0]
-        img_rgb_harm[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * img_rgb[:, :, 2]
+        grbgradshift[:, :, 0] = hue_picked[0, 0, 0] * v + (1 - v) * grbgrad[:, :, 0]
+        grbgradshift[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * grbgrad[:, :, 2]
         print('Loop done')
 
     else:
@@ -226,6 +226,7 @@ def search_closest(a, b):
         db = hue_picked_rgb[0, :, 2].reshape(1, 1, -1) - bf
     dc2 = da ** 2 + db ** 2
     index = np.argsort(dc2)
+    print(index[0, 0, :])
     return index
 
 def on_trackbar_strength(vs):
