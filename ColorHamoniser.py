@@ -1,5 +1,3 @@
-#from mpl_toolkits import mplot3d
-#import matplotlib.pyplot as plt
 import numpy as np
 import cv2 as cv
 
@@ -26,7 +24,6 @@ def labtolch(img_lab):
     channel_h[channel_h < 0] += 255
 
     img_lch[:, :, 2] = channel_h.astype(np.uint8)
-    #img_lch[:,:,2] = (np.arctan2((img_lab[:,:,2]-127), (img_lab[:,:,1]-127)) + np.pi) / (2*np.pi) * 255     # 0 to 2Pi
     return img_lch
 
 def lchtolab(img_lch):
@@ -38,17 +35,9 @@ def lchtolab(img_lch):
     channel_a = channel_c * np.cos( channel_h / 255 * 2 * np.pi ) + 127
     channel_b = channel_c * np.sin( channel_h / 255 * 2 * np.pi ) + 127
 
-    row = 100
     img_lab[:, :, 0] = channel_l.astype(np.uint8)
     img_lab[:, :, 1] = channel_a.astype(np.uint8)
     img_lab[:, :, 2] = channel_b.astype(np.uint8)
-    #print('lchtolab channel c: ', channel_c[127, 100:150])
-    #print('lchtolab channel h: ', channel_h[127, 100:150])
-    #print('lchtolab channel a: ', channel_a[row, 100:150])
-    #print('lchtolab img_lab a: ', img_lab[row, 100:150, 1])
-    #print('lchtolab channel b: ', channel_b[row, 100:150])
-    #print('lchtolab img_lab b: ', img_lab[row, 100:150, 2])
-    #print('lchtolab img_lab type: ', img_lab.dtype)
     return img_lab
 
 def lchtobgr(img_lch):
@@ -197,8 +186,8 @@ def calc_shift_lab(v):
 
     if ncolors == 0 :
         print('One color')
-        img_lab_harm[:, :, 1] = hue_picked[0, 0, 1] * v + (1 - v) * img_lab[:, :, 1]
-        img_lab_harm[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * img_lab[:, :, 2]
+        labgradshift[:, :, 1] = hue_picked[0, 0, 1] * v + (1 - v) * labgrad[:, :, 1]
+        labgradshift[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * labgrad[:, :, 2]
         print('Loop done')
     else:
         ncolors += 1
