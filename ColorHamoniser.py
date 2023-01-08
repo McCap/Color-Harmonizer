@@ -26,6 +26,18 @@ def labtolch(img_lab):
     img_lch[:, :, 2] = channel_h.astype(np.uint8)
     return img_lch
 
+def labtolch_2d(img_lab):
+    img_lch = np.zeros_like(img_lab, dtype=np.uint8)
+    channel_a = img_lab[:, 1].astype(np.float16)
+    channel_b = img_lab[:, 2].astype(np.float16)
+    img_lch[:,0] = img_lab[:,0]
+    channel_c = np.sqrt(np.square(channel_a-128) + np.square(channel_b-128) )           # 0 to 128
+    img_lch[:, 1] = channel_c.astype(np.uint8)                                       # signed 8 bit int
+    channel_h = (np.arctan2((channel_b-128), (channel_a-128)) ) / (2*np.pi) * 255       # 0 to 255
+    channel_h[channel_h < 0] += 255
+    img_lch[:, 2] = channel_h.astype(np.uint8)
+    return img_lch
+
 def lchtolab(img_lch):
     img_lab = np.zeros_like(img_lch, dtype=np.uint8)
     channel_l = img_lch[:, :, 0].astype(np.float16)
@@ -93,49 +105,49 @@ def CallBackFunc(event, x, y, flags, param):
         print("Right mouse button is clicked while pressing SHIFT key - position (", x, ", ", y, ")")
 
 
-def calc_shift_lch_h(v):
+def search_closest_lch(strength, picked):
+    print('search closest lch - picked: ', picked)
+    hues = np.arange(256)
+    dh = picked.reshape(len(picked), -1) - hues
+    dh_abs = np.abs(dh)
+    dh2 = np.where(dh < -127, 256+dh, dh)
+    dh2_abs = np.abs(dh2)
+    closest = np.argsort(dh2_abs, axis=0)
+    result = closest[0]
+    pull_colors = np.choose(result, picked)
+    distance = np.where(result == 0, dh2[0],
+                        np.where(result == 1, dh2[1], 0
+                        ))
+    return (hues + strength*distance).astype(np.uint8)
+"""
+    distance = np.where(result == 0, dh2[0],
+                        np.where(result == 1, dh2[1],
+                                 np.where(result == 2, dh2[2],
+                                          np.where(result == 3, dh2[3], 0
+                        ))))
+"""
+
+
+def calc_shift_lch_h(strength):
     global img_lab_harm, hue_picked, img_lab
-    img_lch = labtolch(img_lab)
-    img_lch_harm = labtolch(img_lab)
-    hue_picked_lch = labtolch(hue_picked)
-    hue_picked_lch_trans = np.zeros_like(hue_picked_lch)
-    hue_picked_lch_trans[:, 2] = hue_picked_lch[:, 2] - hue_picked_lch[0, 2]
+    ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')+1
+    hue_picked_lch = labtolch_2d((hue_picked))
+    new_hues = search_closest_lch(strength, hue_picked[0:ncolors, 2])
+    img_lch_harm[:,:,1] = new_hues[img_lch_harm[:, :, 2]]
 
-    print('hue_picked: ', hue_picked_lch)
-    print('hue_picked trans: ', hue_picked_lch_trans)
+    labgrad = createlabgrad()
+    labgradshift = createlabgrad()
+    labgradshift[:, :, 2] = new_hues
+    out_labgrad = cv.cvtColor(createlabgrad(), cv.COLOR_Lab2BGR)
+    cv.imshow('Gradient', out_labgrad)
+    out_labgradshift = cv.cvtColor(labgradshift, cv.COLOR_Lab2BGR)
+    cv.imshow('Shifted Gradient', out_labgradshift)
 
-    mapping = np.zeros((1, 256, 1))
-    print('mapping: ', mapping.shape)
-    mapping[0, 128:255, 0] = 255
-
-    blrad = cv.getTrackbarPos('Blur', 'Color Harmoniser') * 10 + 1
-    print('blrad: ', blrad)
-
-    mapping[:, :, 0] = cv.blur(mapping[:, :, 0], (blrad, blrad))  # Blur the mapping function
-    print('mapping: ', mapping.shape)
-
-    if cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') == 0 :
-        print('One color LCH-hue')
-        hue = (img_lch[:, :, 2].astype('float16') - hue_picked_lch[0, 2]).astype('uint8')
-        # hue[hue < 0] += 255
-
-        hue_harm = mapping[0, hue, 0] * v + (1 - v) * hue
-        hue_mask = (hue_harm + hue_picked_lch[0, 2]) > 255
-        img_lch_harm[:, :, 2] = np.where(hue_mask, hue_harm + hue_picked_lch[0, 2] - 255,
-                                                   hue_harm + hue_picked_lch[0, 2])
-
-                #img_lch_harm[i,j,2] = hue_picked_lch[0, 0, 2] * v + (1 - v) * img_lch[i,j,2]
-        print('Loop done')
-    #print('img_lch_harm hue: ', img_lch_harm[100, 100:150, 2])
-    #print('img_lch_harm c: ', img_lch_harm[100, 100:150, 1])
-    img_lab_harm = lchtolab(img_lch_harm)
-    #print('img_lab_harm b 2: ', img_lab_harm[100, 100:150, 2])
-
+    print('Loop done')
     show_image()
+    return None
 
-
-
-def calc_shift_lab(v):
+def calc_shift_lab(strength):
     global img_lab_harm, hue_picked, img_lab
 
     labgrad = createlabgrad()
@@ -146,8 +158,8 @@ def calc_shift_lab(v):
 
     if ncolors == 0 :
         print('One color')
-        labgradshift[:, :, 1] = hue_picked[0, 1] * v + (1 - v) * labgrad[:, :, 1]
-        labgradshift[:, :, 2] = hue_picked[0, 2] * v + (1 - v) * labgrad[:, :, 2]
+        labgradshift[:, :, 1] = hue_picked[0, 1] * strength + (1 - strength) * labgrad[:, :, 1]
+        labgradshift[:, :, 2] = hue_picked[0, 2] * strength + (1 - strength) * labgrad[:, :, 2]
         print('Loop done')
     else:
         ncolors += 1
@@ -168,8 +180,8 @@ def calc_shift_lab(v):
         labgradshift[:, :, 1] = blur_a
         labgradshift[:, :, 2] = blur_b
 
-    img_lab_harm[:,:,1] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 1] * v + (1-v) * img_lab[:,:,1]).astype('uint8')
-    img_lab_harm[:,:,2] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 2] * v + (1-v) * img_lab[:,:,2]).astype('uint8')
+    img_lab_harm[:,:,1] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 1] * strength + (1-strength) * img_lab[:,:,1]).astype('uint8')
+    img_lab_harm[:,:,2] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 2] * strength + (1-strength) * img_lab[:,:,2]).astype('uint8')
 
 
     out_labgrad = cv.cvtColor(labgrad, cv.COLOR_Lab2BGR)
