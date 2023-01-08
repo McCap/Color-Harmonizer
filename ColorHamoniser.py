@@ -65,8 +65,6 @@ def CallBackFunc(event, x, y, flags, param):
             calc_shift_lab(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
         elif cv.getTrackbarPos('Type', 'Color Harmoniser') == 1:
             calc_shift_lch_h(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
-        elif cv.getTrackbarPos('Type','Color Harmoniser') == 2:
-            calc_shift_rgb(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
     elif event == cv.EVENT_RBUTTONDOWN:
         global  img_R_lch
         hue_picked[ 1, 2] = img_lab[y,x,2]
@@ -78,8 +76,6 @@ def CallBackFunc(event, x, y, flags, param):
             calc_shift_lab(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
         elif cv.getTrackbarPos('Type','Color Harmoniser') == 1:
             calc_shift_lch_h(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
-        elif cv.getTrackbarPos('Type','Color Harmoniser') == 2:
-            calc_shift_rgb(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
     elif event == cv.EVENT_MBUTTONDOWN:
         print("Middle button of the mouse is clicked - position (", x, ", ", y, ")")
         hue_picked[2, 2] = img_lab[y, x, 2]
@@ -91,8 +87,6 @@ def CallBackFunc(event, x, y, flags, param):
             calc_shift_lab(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
         elif cv.getTrackbarPos('Type', 'Color Harmoniser') == 1:
             calc_shift_lch_h(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
-        elif cv.getTrackbarPos('Type','Color Harmoniser') == 2:
-            calc_shift_rgb(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
     if flags == cv.EVENT_FLAG_CTRLKEY + cv.EVENT_FLAG_LBUTTON:
         print("Left mouse button is clicked while pressing CTRL key - position (", x, ", ",y, ")")
     elif flags == cv.EVENT_FLAG_RBUTTON + cv.EVENT_FLAG_SHIFTKEY:
@@ -139,42 +133,6 @@ def calc_shift_lch_h(v):
 
     show_image()
 
-def calc_shift_rgb(v):
-    global img_lab_harm, hue_picked, img_lab
-    img_rgb = cv.cvtColor(img_lab, cv.COLOR_LAB2RGB)
-    img_rgb_harm = cv.cvtColor(img_lab_harm, cv.COLOR_LAB2RGB)
-    hue_picked_rgb = cv.cvtColor(hue_picked, cv.COLOR_LAB2RGB)
-
-    grbgrad = createlabgrad()
-    grbgradshift = createlabgrad()
-    ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')
-    if ncolors == 0 :
-        print('One color RGB')
-        grbgradshift[:, :, 0] = hue_picked[0, 0] * v + (1 - v) * grbgrad[:, :, 0]
-        grbgradshift[:, :, 2] = hue_picked[0, 2] * v + (1 - v) * grbgrad[:, :, 2]
-        print('Loop done')
-
-    else:
-        ncolors += 1
-        print('Number of colors: ', ncolors)
-
-        indexes = search_closest(grbgrad[:, :, 1], grbgrad[:, :, 2])
-        grbgradshift[:, :, 1] = np.take(hue_picked_rgb[ :, 0], indexes[:, :, 0])
-        grbgradshift[:, :, 2] = np.take(hue_picked_rgb[ :, 2], indexes[:, :, 0])
-
-        blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
-        print('blrad: ', blrad)
-
-        blur_a = cv.blur(grbgradshift[:, :, 1], (blrad, blrad))       # Blur the mapping function
-        blur_b = cv.blur(grbgradshift[:, :, 2], (blrad, blrad))       # Blur the mapping function
-        grbgradshift[:, :, 1] = blur_a
-        grbgradshift[:, :, 2] = blur_b
-
-    img_rgb_harm[:, :, 0] = (grbgradshift[img_rgb[:, :, 2], img_rgb[:, :, 0], 1] * v + (1 - v) * img_rgb[:, :, 0]).astype('uint8')
-    img_rgb_harm[:, :, 2] = (grbgradshift[img_rgb[:, :, 2], img_lab[:, :, 1], 2] * v + (1 - v) * img_lab[:, :, 2]).astype('uint8')
-    img_lab_harm = cv.cvtColor(img_rgb_harm, cv.COLOR_RGB2LAB)
-    print('Loop done')
-    show_image()
 
 
 def calc_shift_lab(v):
@@ -182,7 +140,9 @@ def calc_shift_lab(v):
 
     labgrad = createlabgrad()
     labgradshift = createlabgrad()
+    print('1. labgradshift.shape: ', labgradshift.shape)
     ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')
+
 
     if ncolors == 0 :
         print('One color')
@@ -193,9 +153,12 @@ def calc_shift_lab(v):
         ncolors += 1
         print('Number of colors: ', ncolors)
 
-        indexes = search_closest(labgrad[:, :, 1], labgrad[:, :, 2])
+        indexes = search_closest_lab(labgrad[:, :, 1], labgrad[:, :, 2])
         labgradshift[:, :, 1] = np.take(hue_picked[:, 1], indexes[:, :, 0])
         labgradshift[:, :, 2] = np.take(hue_picked[:, 2], indexes[:, :, 0])
+        print('hue_picked: ', hue_picked)
+        print('hue_picked[1]: ', hue_picked[:, 1])
+        print('2. labgradshift.shape: ', labgradshift.shape)
 
         blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
         print('blrad: ', blrad)
@@ -208,30 +171,29 @@ def calc_shift_lab(v):
     img_lab_harm[:,:,1] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 1] * v + (1-v) * img_lab[:,:,1]).astype('uint8')
     img_lab_harm[:,:,2] = (labgradshift[img_lab[:,:,2], img_lab[:,:,1], 2] * v + (1-v) * img_lab[:,:,2]).astype('uint8')
 
+
+    out_labgrad = cv.cvtColor(labgrad, cv.COLOR_Lab2BGR)
+    cv.imshow('Gradient', out_labgrad)
+    out_labgradshift = cv.cvtColor(labgradshift, cv.COLOR_Lab2BGR)
+    cv.imshow('Shifted Gradient', out_labgradshift)
+
     print('Loop done')
     show_image()
     return None
 
-def search_closest(a, b):
+def search_closest_lab(a, b):
     af = np.atleast_3d(a.astype(float))
     bf = np.atleast_3d(b.astype(float))
     htype = cv.getTrackbarPos('Type','Color Harmoniser')
+    ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') +1
 
     if htype == 0:
-        da = hue_picked[:, 1].reshape(1, 1, -1) - af
-        db = hue_picked[:, 2].reshape(1, 1, -1) - bf
-    elif htype == 2:
-        hue_picked_rgb = cv.cvtColor(hue_picked, cv.COLOR_LAB2RGB)
-        da = hue_picked_rgb[:, 1].reshape(1, 1, -1) - af
-        db = hue_picked_rgb[:, 2].reshape(1, 1, -1) - bf
+        da = hue_picked[0:ncolors, 1].reshape(1, 1, -1) - af
+        db = hue_picked[0:ncolors, 2].reshape(1, 1, -1) - bf
     dc2 = da ** 2 + db ** 2
     index = np.argsort(dc2)
-    print('hue_picked[:, 1].reshape(1, 1, -1), shape: ', hue_picked[:, 1].reshape(1, 1, -1).shape)
-    print('af.shape: ', af.shape)
-    print('da.shape: ', da.shape)
-    print(da[0, 0, :])
-    print(dc2[0, 0, :])
-    print('index: ',index[0, 0, :])
+    print('index.shape: ',index.shape)
+    print('index: ',index)
     return index
 
 def on_trackbar_strength(vs):
@@ -258,12 +220,15 @@ def createlabgrad():
 
 # Window
 cv.namedWindow('Color Harmoniser')
-cv.createTrackbar('Type','Color Harmoniser',0,2,nothing)         # Type 0: Lab-ab channels, Type 1: Lch-hue channel, Type 2: RGB-RB channels
+cv.namedWindow('Gradient')
+cv.namedWindow('Shifted Gradient')
+
+cv.createTrackbar('Type','Color Harmoniser',0,1,nothing)         # Type 0: Lab-ab channels, Type 1: Lch-hue channel
 cv.createTrackbar('Strength','Color Harmoniser',0,100,on_trackbar_strength)
 cv.createTrackbar('Number of Colors','Color Harmoniser',0,2,nothing)
 cv.createTrackbar('Blur','Color Harmoniser',0,10, nothing)
 
-hue_picked = np.zeros((4, 3), dtype=np.uint8)                   # pull points, 1 row, 4 columns for 4 possible points, 3 layers for L, a, b. Like image to make it convertible
+hue_picked = np.zeros((4, 3), dtype=np.uint8)                   # pull points, 4 rows for 4 possible points, 3 columns for L, a, b. Like image to make it convertible
 img_bgr = cv.imread('image7.jpg')               # Load image
 #img_lab = np.zeros(img_bgr.shape, dtype=float)
 img_lab = cv.cvtColor(img_bgr,cv.COLOR_BGR2Lab)    # convert image to LAB, Opencv does 0-255 for L, a and b
