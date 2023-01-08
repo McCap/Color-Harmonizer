@@ -55,11 +55,11 @@ def CallBackFunc(event, x, y, flags, param):
     global hue_picked
     if event == cv.EVENT_LBUTTONDOWN:
         global img_lab
-        hue_picked[0, 0, 2] = img_lab[y,x,2]
-        print('b left: ', hue_picked[0, 0,2])
-        hue_picked[0, 0, 1] = img_lab[y,x,1]
-        print('a left: ', hue_picked[0, 0,1])
-        hue_picked[0, 0, 0] = img_lab[y,x,0]
+        hue_picked[0, 2] = img_lab[y,x,2]
+        print('b left: ', hue_picked[ 0,2])
+        hue_picked[ 0, 1] = img_lab[y,x,1]
+        print('a left: ', hue_picked[ 0,1])
+        hue_picked[ 0, 0] = img_lab[y,x,0]
         print('hue_picked in Callback: ', hue_picked.dtype)
         if cv.getTrackbarPos('Type', 'Color Harmoniser') == 0:
             calc_shift_lab(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
@@ -69,11 +69,11 @@ def CallBackFunc(event, x, y, flags, param):
             calc_shift_rgb(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
     elif event == cv.EVENT_RBUTTONDOWN:
         global  img_R_lch
-        hue_picked[0, 1, 2] = img_lab[y,x,2]
-        print('b right: ', hue_picked[0, 1,2])
-        hue_picked[0, 1, 1] = img_lab[y,x,1]
-        print('a right: ', hue_picked[0, 1,1])
-        hue_picked[0, 1, 0] = img_lab[y,x,0]
+        hue_picked[ 1, 2] = img_lab[y,x,2]
+        print('b right: ', hue_picked[ 1,2])
+        hue_picked[1, 1] = img_lab[y,x,1]
+        print('a right: ', hue_picked[ 1,1])
+        hue_picked[1, 0] = img_lab[y,x,0]
         if cv.getTrackbarPos('Type', 'Color Harmoniser') == 0:
             calc_shift_lab(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
         elif cv.getTrackbarPos('Type','Color Harmoniser') == 1:
@@ -82,11 +82,11 @@ def CallBackFunc(event, x, y, flags, param):
             calc_shift_rgb(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
     elif event == cv.EVENT_MBUTTONDOWN:
         print("Middle button of the mouse is clicked - position (", x, ", ", y, ")")
-        hue_picked[0, 2, 2] = img_lab[y, x, 2]
-        print('b middle: ', hue_picked[0, 1, 2])
-        hue_picked[0, 2, 1] = img_lab[y, x, 1]
-        print('a middle: ', hue_picked[0, 1, 1])
-        hue_picked[0, 2, 0] = img_lab[y, x, 0]
+        hue_picked[2, 2] = img_lab[y, x, 2]
+        print('b middle: ', hue_picked[1, 2])
+        hue_picked[2, 1] = img_lab[y, x, 1]
+        print('a middle: ', hue_picked[1, 1])
+        hue_picked[2, 0] = img_lab[y, x, 0]
         if cv.getTrackbarPos('Type', 'Color Harmoniser') == 0:
             calc_shift_lab(cv.getTrackbarPos('Strength', 'Color Harmoniser') / 100)
         elif cv.getTrackbarPos('Type', 'Color Harmoniser') == 1:
@@ -105,7 +105,7 @@ def calc_shift_lch_h(v):
     img_lch_harm = labtolch(img_lab)
     hue_picked_lch = labtolch(hue_picked)
     hue_picked_lch_trans = np.zeros_like(hue_picked_lch)
-    hue_picked_lch_trans[0, :, 2] = hue_picked_lch[0, :, 2] - hue_picked_lch[0, 0, 2]
+    hue_picked_lch_trans[:, 2] = hue_picked_lch[:, 2] - hue_picked_lch[0, 2]
 
     print('hue_picked: ', hue_picked_lch)
     print('hue_picked trans: ', hue_picked_lch_trans)
@@ -122,13 +122,13 @@ def calc_shift_lch_h(v):
 
     if cv.getTrackbarPos('Number of Colors', 'Color Harmoniser') == 0 :
         print('One color LCH-hue')
-        hue = (img_lch[:, :, 2].astype('float16') - hue_picked_lch[0, 0, 2]).astype('uint8')
+        hue = (img_lch[:, :, 2].astype('float16') - hue_picked_lch[0, 2]).astype('uint8')
         # hue[hue < 0] += 255
 
         hue_harm = mapping[0, hue, 0] * v + (1 - v) * hue
-        hue_mask = (hue_harm + hue_picked_lch[0, 0, 2]) > 255
-        img_lch_harm[:, :, 2] = np.where(hue_mask, hue_harm + hue_picked_lch[0, 0, 2] - 255,
-                                                   hue_harm + hue_picked_lch[0, 0, 2])
+        hue_mask = (hue_harm + hue_picked_lch[0, 2]) > 255
+        img_lch_harm[:, :, 2] = np.where(hue_mask, hue_harm + hue_picked_lch[0, 2] - 255,
+                                                   hue_harm + hue_picked_lch[0, 2])
 
                 #img_lch_harm[i,j,2] = hue_picked_lch[0, 0, 2] * v + (1 - v) * img_lch[i,j,2]
         print('Loop done')
@@ -150,8 +150,8 @@ def calc_shift_rgb(v):
     ncolors = cv.getTrackbarPos('Number of Colors', 'Color Harmoniser')
     if ncolors == 0 :
         print('One color RGB')
-        grbgradshift[:, :, 0] = hue_picked[0, 0, 0] * v + (1 - v) * grbgrad[:, :, 0]
-        grbgradshift[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * grbgrad[:, :, 2]
+        grbgradshift[:, :, 0] = hue_picked[0, 0] * v + (1 - v) * grbgrad[:, :, 0]
+        grbgradshift[:, :, 2] = hue_picked[0, 2] * v + (1 - v) * grbgrad[:, :, 2]
         print('Loop done')
 
     else:
@@ -159,8 +159,8 @@ def calc_shift_rgb(v):
         print('Number of colors: ', ncolors)
 
         indexes = search_closest(grbgrad[:, :, 1], grbgrad[:, :, 2])
-        grbgradshift[:, :, 1] = np.take(hue_picked_rgb[0, :, 0], indexes[:, :, 0])
-        grbgradshift[:, :, 2] = np.take(hue_picked_rgb[0, :, 2], indexes[:, :, 0])
+        grbgradshift[:, :, 1] = np.take(hue_picked_rgb[ :, 0], indexes[:, :, 0])
+        grbgradshift[:, :, 2] = np.take(hue_picked_rgb[ :, 2], indexes[:, :, 0])
 
         blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
         print('blrad: ', blrad)
@@ -186,16 +186,16 @@ def calc_shift_lab(v):
 
     if ncolors == 0 :
         print('One color')
-        labgradshift[:, :, 1] = hue_picked[0, 0, 1] * v + (1 - v) * labgrad[:, :, 1]
-        labgradshift[:, :, 2] = hue_picked[0, 0, 2] * v + (1 - v) * labgrad[:, :, 2]
+        labgradshift[:, :, 1] = hue_picked[0, 1] * v + (1 - v) * labgrad[:, :, 1]
+        labgradshift[:, :, 2] = hue_picked[0, 2] * v + (1 - v) * labgrad[:, :, 2]
         print('Loop done')
     else:
         ncolors += 1
         print('Number of colors: ', ncolors)
 
         indexes = search_closest(labgrad[:, :, 1], labgrad[:, :, 2])
-        labgradshift[:, :, 1] = np.take(hue_picked[0, :, 1], indexes[:, :, 0])
-        labgradshift[:, :, 2] = np.take(hue_picked[0, :, 2], indexes[:, :, 0])
+        labgradshift[:, :, 1] = np.take(hue_picked[:, 1], indexes[:, :, 0])
+        labgradshift[:, :, 2] = np.take(hue_picked[:, 2], indexes[:, :, 0])
 
         blrad = cv.getTrackbarPos('Blur','Color Harmoniser') * 10 + 1
         print('blrad: ', blrad)
@@ -218,15 +218,20 @@ def search_closest(a, b):
     htype = cv.getTrackbarPos('Type','Color Harmoniser')
 
     if htype == 0:
-        da = hue_picked[0, :, 1].reshape(1, 1, -1) - af
-        db = hue_picked[0, :, 2].reshape(1, 1, -1) - bf
+        da = hue_picked[:, 1].reshape(1, 1, -1) - af
+        db = hue_picked[:, 2].reshape(1, 1, -1) - bf
     elif htype == 2:
         hue_picked_rgb = cv.cvtColor(hue_picked, cv.COLOR_LAB2RGB)
-        da = hue_picked_rgb[0, :, 1].reshape(1, 1, -1) - af
-        db = hue_picked_rgb[0, :, 2].reshape(1, 1, -1) - bf
+        da = hue_picked_rgb[:, 1].reshape(1, 1, -1) - af
+        db = hue_picked_rgb[:, 2].reshape(1, 1, -1) - bf
     dc2 = da ** 2 + db ** 2
     index = np.argsort(dc2)
-    print(index[0, 0, :])
+    print('hue_picked[:, 1].reshape(1, 1, -1), shape: ', hue_picked[:, 1].reshape(1, 1, -1).shape)
+    print('af.shape: ', af.shape)
+    print('da.shape: ', da.shape)
+    print(da[0, 0, :])
+    print(dc2[0, 0, :])
+    print('index: ',index[0, 0, :])
     return index
 
 def on_trackbar_strength(vs):
@@ -258,7 +263,7 @@ cv.createTrackbar('Strength','Color Harmoniser',0,100,on_trackbar_strength)
 cv.createTrackbar('Number of Colors','Color Harmoniser',0,2,nothing)
 cv.createTrackbar('Blur','Color Harmoniser',0,10, nothing)
 
-hue_picked = np.zeros((1, 4, 3), dtype=np.uint8)                   # pull points, 1 row, 4 columns for 4 possible points, 3 layers for L, a, b. Like image to make it convertible
+hue_picked = np.zeros((4, 3), dtype=np.uint8)                   # pull points, 1 row, 4 columns for 4 possible points, 3 layers for L, a, b. Like image to make it convertible
 img_bgr = cv.imread('image7.jpg')               # Load image
 #img_lab = np.zeros(img_bgr.shape, dtype=float)
 img_lab = cv.cvtColor(img_bgr,cv.COLOR_BGR2Lab)    # convert image to LAB, Opencv does 0-255 for L, a and b
